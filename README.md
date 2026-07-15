@@ -1,6 +1,5 @@
 # Virtual ETF Portfolio Optimization & Risk Management Engine
 
-An editable, LinkedIn-ready quantitative finance project that simulates how an asset manager, robo-advisor, or quant research team could build, optimize, backtest, and report on multi-asset ETF portfolios.
 
 This repository includes two publishable outputs:
 
