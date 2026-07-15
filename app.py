@@ -1,6 +1,3 @@
-# Virtual ETF Portfolio Optimizer Streamlit app
-# Public demo app with editable sidebar controls and interactive charts.
-
 from __future__ import annotations
 
 
@@ -1165,7 +1162,7 @@ def _chart_div(fig: go.Figure, include_plotlyjs: bool = False) -> str:
 
 
 def build_html_report(results: dict[str, Any], output_path: str | Path) -> Path:
-    """Build a standalone LinkedIn-shareable HTML report."""
+    """Build a standalone web report."""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1204,7 +1201,6 @@ def build_html_report(results: dict[str, Any], output_path: str | Path) -> Path:
       <p class="subtitle">An editable Python project that simulates institutional ETF allocation research using constrained optimization, walk-forward backtesting, transaction costs, and professional risk analytics.</p>
       <div class="hero-actions">
         <a href="#dashboard">View Dashboard</a>
-        <a href="#methodology" class="secondary">Methodology</a>
       </div>
     </div>
     <div class="hero-card">
@@ -1241,19 +1237,6 @@ def build_html_report(results: dict[str, Any], output_path: str | Path) -> Path:
       <h2>Static Optimized Weights</h2>
     </section>
     <section class="table-card">{weights_table_html(static_weights)}</section>
-
-    <section id="methodology" class="methodology">
-      <p class="eyebrow">Methodology</p>
-      <h2>How the Engine Works</h2>
-      <div class="method-grid">
-        <div><h3>1. Data Pipeline</h3><p>Collects ETF adjusted prices, validates history, removes unreliable assets, and computes daily returns.</p></div>
-        <div><h3>2. Risk Model</h3><p>Estimates expected returns and annualized covariance, with Ledoit-Wolf shrinkage when available.</p></div>
-        <div><h3>3. Optimization</h3><p>Builds Equal Weight, Minimum Volatility, Maximum Sharpe, Risk Parity, and Maximum Diversification portfolios.</p></div>
-        <div><h3>4. Backtest</h3><p>Uses only historical data available at each rebalance date, then tests the next period out of sample.</p></div>
-        <div><h3>5. Costs</h3><p>Applies configurable transaction costs based on portfolio turnover at each rebalance.</p></div>
-        <div><h3>6. Reporting</h3><p>Exports interactive charts, allocation tables, risk metrics, and a LinkedIn-shareable web report.</p></div>
-      </div>
-    </section>
 
     <section class="disclaimer">
       <strong>Educational use only.</strong> This is a virtual research project, not investment advice. Results depend on assumptions, data quality, model design, and historical periods. Historical or synthetic demo performance does not guarantee future results.
@@ -1377,6 +1360,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from typing import Any
+import html
 
 import pandas as pd
 import streamlit as st
@@ -1402,53 +1386,169 @@ APP_CSS = """
 .small-muted { color: #64748b; font-size: 0.92rem; }
 .big-title { font-size: 3.0rem; line-height: 1.0; font-weight: 850; letter-spacing: -0.055em; margin-bottom: 0.4rem; }
 .section-note { color: #64748b; margin-top: -0.4rem; }
-.custom-kpi-card {
-    padding: 1.0rem 1.05rem;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 1.0rem;
-    background: rgba(15, 23, 42, 0.42);
-    min-height: 118px;
-    overflow: hidden;
+.kpi-card {
+    min-height: 138px;
+    padding: 1.05rem 1.10rem;
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    border-radius: 1.05rem;
+    background: var(--secondary-background-color);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
+    overflow: visible;
 }
-.custom-kpi-label {
+.kpi-label {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    color: rgba(248, 250, 252, 0.86);
-    font-size: 0.95rem;
-    font-weight: 700;
     margin-bottom: 0.55rem;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1.25;
 }
-.custom-kpi-value {
-    color: #ffffff;
-    font-size: clamp(1.45rem, 2.25vw, 2.35rem);
-    line-height: 1.08;
-    font-weight: 850;
-    letter-spacing: -0.035em;
-    white-space: normal;
-    overflow-wrap: anywhere;
-}
-.custom-kpi-value.strategy {
-    font-size: clamp(1.05rem, 1.65vw, 1.75rem);
-    letter-spacing: -0.025em;
-}
-.help-dot {
+.kpi-help {
     display: inline-flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     width: 1.05rem;
     height: 1.05rem;
-    border: 1px solid rgba(248, 250, 252, 0.48);
+    border: 1px solid rgba(148, 163, 184, 0.70);
     border-radius: 999px;
-    color: rgba(248, 250, 252, 0.88);
+    color: rgba(148, 163, 184, 0.95);
     font-size: 0.72rem;
     font-weight: 800;
     cursor: help;
 }
+.kpi-value {
+    color: var(--text-color);
+    font-size: clamp(1.45rem, 2.3vw, 2.55rem);
+    line-height: 1.05;
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+.kpi-value.strategy {
+    font-size: clamp(1.25rem, 1.7vw, 2.05rem);
+    letter-spacing: -0.025em;
+}
+
+.project-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+.project-header-left {
+    flex: 1;
+    min-width: 0;
+}
+.header-subtitle {
+    color: var(--text-color);
+    opacity: 0.82;
+    font-size: 1.02rem;
+    line-height: 1.55;
+    margin: 0.65rem 0 0;
+    max-width: 920px;
+}
+.creator-signature-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-top: 0.12rem;
+    flex-shrink: 0;
+}
+.creator-name {
+    color: rgba(148, 163, 184, 0.96);
+    font-size: 0.82rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.signature-square {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: #0A66C2;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    box-shadow: 0 12px 28px rgba(10, 102, 194, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.signature-square:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow: 0 16px 34px rgba(10, 102, 194, 0.36);
+}
+.signature-square .nf-mark {
+    font-size: 1.12rem;
+    line-height: 1;
+}
+.signature-square .in-mark {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    font-size: 0.55rem;
+    line-height: 1;
+    font-weight: 900;
+    background: rgba(255, 255, 255, 0.20);
+    padding: 2px 3px;
+    border-radius: 4px;
+}
+@media (max-width: 760px) {
+    .project-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .creator-signature-wrap {
+        margin-top: 0.1rem;
+    }
+}
+
 </style>
 """
 st.markdown(APP_CSS, unsafe_allow_html=True)
 
+
+LINKEDIN_URL = "https://www.linkedin.com/in/nicola-fanelli-8ab498360/"
+
+
+def render_project_header() -> None:
+    """Render the app header with a compact LinkedIn signature badge."""
+    linkedin_url = html.escape(LINKEDIN_URL, quote=True)
+    st.markdown(
+        f"""
+        <div class="project-header">
+            <div class="project-header-left">
+                <div class="big-title">Virtual ETF Portfolio Optimization &amp; Risk Management Engine</div>
+                <p class="header-subtitle">
+                    An interactive quantitative finance dashboard for ETF allocation research,
+                    walk-forward backtesting, transaction-cost simulation, and institutional risk analytics.
+                </p>
+            </div>
+            <div class="creator-signature-wrap">
+                <span class="creator-name">Nicola Fanelli</span>
+                <a class="signature-square"
+                   href="{linkedin_url}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   aria-label="Open Nicola Fanelli's LinkedIn profile"
+                   title="Open Nicola Fanelli's LinkedIn profile">
+                    <span class="nf-mark">NF</span>
+                    <span class="in-mark">in</span>
+                </a>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def parse_tickers(text: str) -> list[str]:
     """Parse comma- or whitespace-separated ETF tickers."""
@@ -1505,6 +1605,26 @@ def _metric_value(row: pd.Series, column: str) -> float:
     """Safely extract a numeric metric from a performance row."""
     value = row.get(column, np.nan)
     return float(value) if pd.notna(value) else np.nan
+
+
+def render_kpi_card(label: str, value: str, help_text: str, *, value_class: str = "") -> None:
+    """Render a KPI card with a readable value and a hoverable question-mark hint."""
+    safe_label = html.escape(label)
+    safe_value = html.escape(str(value))
+    safe_help = html.escape(help_text, quote=True)
+    cls = f"kpi-value {value_class}".strip()
+    st.markdown(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-label">
+                <span>{safe_label}</span>
+                <span class="kpi-help" title="{safe_help}">?</span>
+            </div>
+            <div class="{cls}">{safe_value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def strategy_universe(performance: pd.DataFrame) -> list[str]:
@@ -1579,23 +1699,6 @@ Average simulated rebalancing intensity for **{best_strategy}** was **{turnover_
 """
 
 
-def metric_card(label: str, value: str, help_text: str, *, compact_value: bool = False) -> None:
-    """Render a readable KPI card with a visible question-mark explanation icon."""
-    value_class = "custom-kpi-value strategy" if compact_value else "custom-kpi-value"
-    st.markdown(
-        f"""
-        <div class="custom-kpi-card">
-            <div class="custom-kpi-label">
-                <span>{html.escape(label)}</span>
-                <span class="help-dot" title="{html.escape(help_text)}">?</span>
-            </div>
-            <div class="{value_class}">{html.escape(str(value))}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def settings_to_dict(settings: OptimizerSettings) -> dict[str, Any]:
     """Convert settings dataclass to a cache-friendly dictionary."""
     return {
@@ -1627,7 +1730,7 @@ with st.sidebar:
         "Data mode",
         options=["Demo data", "Live Yahoo Finance"],
         index=0,
-        help="Choose demo data for a stable public web demo, or Live Yahoo Finance to download current historical ETF prices through yfinance.",
+        help="Choose the data source. Demo data keeps the public app stable; Live Yahoo Finance attempts to download real ETF history with yfinance.",
     )
     data_mode = "live" if data_mode_label == "Live Yahoo Finance" else "demo"
 
@@ -1635,7 +1738,7 @@ with st.sidebar:
         "ETF universe",
         value="SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD, VNQ, DBC",
         height=95,
-        help="Comma-separated ETF tickers included in the optimization universe. The optimizer allocates only across these assets.",
+        help="Comma-separated ETF tickers included in the optimization universe. These are the investable assets the model can allocate to.",
     )
     tickers = parse_tickers(tickers_text)
 
@@ -1644,13 +1747,13 @@ with st.sidebar:
         start_date = st.date_input(
             "Start date",
             value=pd.Timestamp("2015-01-01").date(),
-            help="First date used in the analysis. A longer history gives the optimizer more data, but may include older market regimes.",
+            help="First date of the historical price sample used for returns, covariance estimation, and backtesting.",
         )
     with col_b:
         end_date = st.date_input(
             "End date",
             value=pd.Timestamp.today().date(),
-            help="Last date used in the analysis. In live mode, this should be today or a recent trading date.",
+            help="Last date of the historical price sample. Use today for the most recent available data.",
         )
 
     initial_capital = st.number_input(
@@ -1659,7 +1762,7 @@ with st.sidebar:
         max_value=10_000_000,
         value=100_000,
         step=10_000,
-        help="Starting dollar amount used to convert backtested returns into a virtual portfolio value. It does not affect percentage returns.",
+        help="Hypothetical starting amount used to convert strategy returns into a virtual portfolio value curve.",
     )
     max_weight = st.slider(
         "Max ETF weight",
@@ -1667,7 +1770,7 @@ with st.sidebar:
         max_value=1.00,
         value=0.35,
         step=0.05,
-        help="Largest allocation any single ETF is allowed to receive. Lower values force more diversification; higher values allow more concentration.",
+        help="Upper allocation cap for any single ETF. Lower caps force more diversification; higher caps allow concentrated portfolios.",
     )
     min_weight = st.slider(
         "Min ETF weight",
@@ -1675,7 +1778,7 @@ with st.sidebar:
         max_value=0.20,
         value=0.00,
         step=0.01,
-        help="Smallest allocation each ETF must receive. Use 0% to let the optimizer exclude ETFs; higher values force every ETF to remain in the portfolio.",
+        help="Minimum allocation required for each ETF. A zero value allows the optimizer to exclude an ETF from the final allocation.",
     )
     risk_free_rate = st.slider(
         "Annual risk-free rate",
@@ -1683,7 +1786,7 @@ with st.sidebar:
         max_value=0.10,
         value=0.03,
         step=0.005,
-        help="Annual cash-like return assumption used to calculate excess return metrics such as Sharpe ratio.",
+        help="Annual return assumption for a risk-free asset. It is used when calculating Sharpe ratio, Sortino ratio, and alpha.",
     )
     lookback_days = st.slider(
         "Optimization lookback days",
@@ -1691,7 +1794,7 @@ with st.sidebar:
         max_value=1260,
         value=756,
         step=63,
-        help="Number of past trading days used at each rebalance to estimate returns, volatility, and correlations. 252 trading days is roughly one year.",
+        help="Number of past trading days used at each rebalance to estimate expected returns and the covariance matrix. 252 is about one trading year.",
     )
     transaction_cost_bps = st.slider(
         "Transaction cost per turnover",
@@ -1699,13 +1802,13 @@ with st.sidebar:
         max_value=50.0,
         value=5.0,
         step=1.0,
-        help="Simulated trading cost in basis points applied to portfolio turnover at each rebalance. 5 bps equals 0.05% of traded value.",
+        help="Simulated trading cost in basis points. For example, 5 bps means 0.05% cost on 100% portfolio turnover.",
     )
     rebalance_frequency = st.selectbox(
         "Rebalance frequency",
         options=["ME", "QE"],
         format_func=lambda x: "Monthly" if x == "ME" else "Quarterly",
-        help="How often the virtual portfolio is re-optimized and rebalanced. Monthly adapts faster; quarterly usually lowers turnover.",
+        help="How often the portfolio is re-optimized and rebalanced in the walk-forward backtest. Monthly adapts faster; quarterly usually trades less.",
     )
     frontier_samples = st.slider(
         "Efficient frontier samples",
@@ -1713,15 +1816,12 @@ with st.sidebar:
         max_value=10_000,
         value=4_000,
         step=1_000,
-        help="Number of random feasible portfolios used to visualize the risk-return opportunity set. More samples create a denser frontier but run slower.",
+        help="Number of random feasible portfolios plotted for the efficient frontier. Higher values create a smoother chart but run slower.",
     )
 
     run_button = st.button("Run optimization", type="primary", use_container_width=True)
 
-st.markdown('<div class="big-title">Virtual ETF Portfolio Optimization & Risk Management Engine</div>', unsafe_allow_html=True)
-st.markdown(
-    "An interactive quantitative finance dashboard for ETF allocation research, walk-forward backtesting, transaction-cost simulation, and institutional risk analytics."
-)
+render_project_header()
 
 if len(tickers) < 2:
     st.error("Please enter at least two ETF tickers.")
@@ -1768,31 +1868,31 @@ result_explanation = generate_result_explanation(results, best_strategy, best_en
 
 st.info(f"Data source used: {results['data_label']}. This project is virtual research and not investment advice.")
 
-kpi_cols = st.columns([1.8, 1.2, 1.0, 1.0])
+kpi_cols = st.columns(4)
 with kpi_cols[0]:
-    metric_card(
+    render_kpi_card(
         "Best Strategy",
-        str(best_strategy),
-        "Optimized strategy with the highest Sharpe ratio under the current assumptions. Benchmarks are excluded from this headline selection.",
-        compact_value=True,
+        best_strategy,
+        "The optimized portfolio strategy with the highest Sharpe ratio among the model-generated strategies. Benchmarks are excluded from this ranking.",
+        value_class="strategy",
     )
 with kpi_cols[1]:
-    metric_card(
+    render_kpi_card(
         "Best Ending Value",
         money(best_ending_value),
-        "Ending virtual portfolio value for the best strategy after the walk-forward backtest period.",
+        "Final value of the virtual portfolio at the end of the walk-forward backtest after simulated rebalancing and transaction costs.",
     )
 with kpi_cols[2]:
-    metric_card(
+    render_kpi_card(
         "Best CAGR",
         pct(best_row.get("CAGR")),
-        "Compound Annual Growth Rate: the annualized return that would compound the starting value into the ending value over the backtest period.",
+        "CAGR means Compound Annual Growth Rate. It converts the full-period portfolio return into an annualized compounded return.",
     )
 with kpi_cols[3]:
-    metric_card(
+    render_kpi_card(
         "Best Sharpe",
         f"{best_row.get('Sharpe'):.2f}" if pd.notna(best_row.get("Sharpe")) else "n/a",
-        "Risk-adjusted return metric calculated as annualized excess return divided by annualized volatility. Higher is generally better.",
+        "Risk-adjusted return metric. It compares annualized excess return against annualized volatility; higher is generally better.",
     )
 
 main_tabs = st.tabs(["Dashboard", "Allocations", "Performance Table"])
