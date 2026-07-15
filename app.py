@@ -966,20 +966,22 @@ def style_figure(
     height: int = 560,
     show_legend: bool = True,
 ) -> go.Figure:
-    """Apply consistent visual styling to a Plotly figure.
-
-    The Streamlit app is often viewed on narrow laptop screens. A default
-    Plotly legend placed above the chart can overlap the title and make the
-    dashboard hard to read. This helper pushes legends below the plotting
-    area, removes noisy legend titles such as "variable", and gives every
-    chart enough bottom margin for wrapped legend rows.
-    """
-    bottom_margin = 125 if show_legend else 55
+    """Apply institutional terminal-style visual formatting to Plotly figures."""
+    bottom_margin = 128 if show_legend else 62
     fig.update_layout(
-        title={"text": title, "x": 0.02, "xanchor": "left", "y": 0.98, "yanchor": "top"},
+        title={
+            "text": f"<b>{title}</b>",
+            "x": 0.02,
+            "xanchor": "left",
+            "y": 0.97,
+            "yanchor": "top",
+            "font": {"size": 18, "color": "#E6EDF3"},
+        },
         template=PLOTLY_TEMPLATE,
+        paper_bgcolor="#07111F",
+        plot_bgcolor="#07111F",
         height=height,
-        margin=dict(l=55, r=35, t=95, b=bottom_margin),
+        margin=dict(l=62, r=38, t=88, b=bottom_margin),
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -987,19 +989,41 @@ def style_figure(
             xanchor="left",
             x=0.0,
             bgcolor="rgba(0,0,0,0)",
-            font=dict(size=11),
+            bordercolor="rgba(148,163,184,0.18)",
+            borderwidth=0,
+            font=dict(size=11, color="#C9D3DF"),
             title_text="",
         ),
         legend_title_text="",
         hovermode="x unified",
-        font=dict(size=12),
+        font=dict(size=12, color="#C9D3DF"),
+        hoverlabel=dict(bgcolor="#0B1220", font_size=12, font_color="#E6EDF3", bordercolor="#1F2A3A"),
     )
-    fig.update_xaxes(automargin=True)
-    fig.update_yaxes(automargin=True)
+    fig.update_xaxes(
+        automargin=True,
+        showgrid=True,
+        gridcolor="rgba(148,163,184,0.12)",
+        linecolor="rgba(148,163,184,0.22)",
+        zerolinecolor="rgba(250,204,21,0.26)",
+        title_font=dict(color="#9AA7B5"),
+        tickfont=dict(color="#C9D3DF"),
+    )
+    fig.update_yaxes(
+        automargin=True,
+        showgrid=True,
+        gridcolor="rgba(148,163,184,0.12)",
+        linecolor="rgba(148,163,184,0.22)",
+        zerolinecolor="rgba(250,204,21,0.26)",
+        title_font=dict(color="#9AA7B5"),
+        tickfont=dict(color="#C9D3DF"),
+    )
+    try:
+        fig.update_traces(selector=dict(type="scatter"), line=dict(width=2.2))
+    except Exception:
+        pass
     if not show_legend:
         fig.update_layout(showlegend=False)
     return fig
-
 
 def create_figures(results: dict[str, Any]) -> dict[str, go.Figure]:
     """Create all interactive dashboard figures."""
@@ -1198,7 +1222,7 @@ def build_html_report(results: dict[str, Any], output_path: str | Path) -> Path:
     <div class="hero-content">
       <p class="eyebrow">Quant Finance Project</p>
       <h1>Virtual ETF Portfolio Optimization & Risk Management Engine</h1>
-      <p class="subtitle">An editable Python project that simulates institutional ETF allocation research using constrained optimization, walk-forward backtesting, transaction costs, and professional risk analytics.</p>
+      <p class="subtitle">Institutional ETF allocation research system using constrained optimization, walk-forward backtesting, transaction costs, and professional risk analytics.</p>
       <div class="hero-actions">
         <a href="#dashboard">View Dashboard</a>
       </div>
@@ -1346,212 +1370,374 @@ def generate_demo_report(output_path: str | Path) -> Path:
     results = run_full_analysis(settings=settings, data_mode="demo", n_frontier_samples=3_500)
     return build_html_report(results, output_path)
 
+
 # ======================== STREAMLIT APP ========================
 
 
-import tempfile
-from pathlib import Path
-
-# Ensure local project modules are importable on Streamlit Cloud and local runs.
-import sys
-from pathlib import Path
-PROJECT_ROOT = Path(__file__).resolve().parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
+from datetime import datetime
 from typing import Any
 import html
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
-
 st.set_page_config(
-    page_title="Virtual ETF Portfolio Optimizer",
-    page_icon="📈",
+    page_title="ETF Allocation Terminal | Nicola Fanelli",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-APP_CSS = """
+LINKEDIN_URL = "https://www.linkedin.com/in/nicola-fanelli-8ab498360/"
+
+TERMINAL_CSS = """
 <style>
-.block-container { padding-top: 2.5rem; padding-bottom: 4rem; }
-.metric-card {
-    padding: 1.1rem 1.2rem;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 1.1rem;
-    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.92));
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+:root {
+    --terminal-bg: #040A12;
+    --terminal-bg-2: #07111F;
+    --terminal-panel: rgba(7, 17, 31, 0.94);
+    --terminal-panel-2: rgba(11, 18, 32, 0.96);
+    --terminal-border: rgba(148, 163, 184, 0.18);
+    --terminal-border-strong: rgba(56, 189, 248, 0.26);
+    --terminal-text: #E6EDF3;
+    --terminal-muted: #93A4B8;
+    --terminal-subtle: #667085;
+    --terminal-cyan: #38BDF8;
+    --terminal-teal: #2DD4BF;
+    --terminal-amber: #FACC15;
+    --terminal-green: #22C55E;
+    --terminal-red: #F87171;
+    --terminal-purple: #A78BFA;
 }
-.small-muted { color: #64748b; font-size: 0.92rem; }
-.big-title { font-size: 3.0rem; line-height: 1.0; font-weight: 850; letter-spacing: -0.055em; margin-bottom: 0.4rem; }
-.section-note { color: #64748b; margin-top: -0.4rem; }
+
+.stApp {
+    background:
+        radial-gradient(circle at 8% -8%, rgba(56, 189, 248, 0.22), transparent 34%),
+        radial-gradient(circle at 88% 2%, rgba(250, 204, 21, 0.10), transparent 30%),
+        linear-gradient(180deg, #040A12 0%, #06101D 52%, #030712 100%);
+    color: var(--terminal-text);
+}
+
+.block-container {
+    padding-top: 1.1rem;
+    padding-bottom: 3.5rem;
+    max-width: 1540px;
+}
+
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #07111F 0%, #0B1220 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span {
+    color: #DCE7F3;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #F8FAFC;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    background: linear-gradient(135deg, #FACC15 0%, #F59E0B 100%);
+    color: #111827;
+    border: 0;
+    font-weight: 850;
+    letter-spacing: 0.01em;
+}
+
+[data-testid="stSidebar"] .stButton > button:hover {
+    filter: brightness(1.06);
+    color: #111827;
+}
+
+hr {
+    border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.terminal-shell {
+    border: 1px solid var(--terminal-border);
+    border-radius: 24px;
+    padding: 1.2rem 1.25rem 1.15rem;
+    background:
+        linear-gradient(135deg, rgba(7, 17, 31, 0.95), rgba(15, 23, 42, 0.76)),
+        radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 36%);
+    box-shadow: 0 22px 65px rgba(0, 0, 0, 0.36);
+    margin-bottom: 1.15rem;
+}
+
+.terminal-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.terminal-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--terminal-amber);
+    font-weight: 850;
+    margin-bottom: 0.4rem;
+}
+
+.terminal-title {
+    font-size: clamp(2.0rem, 4.4vw, 4.15rem);
+    line-height: 0.93;
+    letter-spacing: -0.065em;
+    font-weight: 900;
+    color: #F8FAFC;
+    margin: 0;
+}
+
+.terminal-subtitle {
+    color: #B8C5D3;
+    font-size: 1.03rem;
+    line-height: 1.58;
+    max-width: 970px;
+    margin: 0.95rem 0 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-shrink: 0;
+}
+
+.creator-name {
+    font-size: 0.82rem;
+    color: #9AA7B5;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.signature-square {
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #0A66C2, #1D4ED8);
+    color: #FFFFFF !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none !important;
+    font-weight: 950;
+    letter-spacing: -0.04em;
+    box-shadow: 0 16px 38px rgba(10, 102, 194, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    position: relative;
+}
+.signature-square .nf-mark { font-size: 1.13rem; line-height: 1; }
+.signature-square .in-mark {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    font-size: 0.56rem;
+    font-weight: 900;
+    background: rgba(255,255,255,0.17);
+    padding: 2px 3px;
+    border-radius: 4px;
+}
+.signature-square:hover { transform: translateY(-1px); filter: brightness(1.08); }
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin-top: 1.15rem;
+}
+.status-tile {
+    background: rgba(2, 6, 23, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.13);
+    border-radius: 16px;
+    padding: 0.75rem 0.85rem;
+}
+.status-label {
+    color: #7C8CA1;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.66rem;
+    font-weight: 850;
+    margin-bottom: 0.23rem;
+}
+.status-value {
+    color: #F8FAFC;
+    font-size: 0.92rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.control-title {
+    padding: 0.95rem 0 0.25rem;
+    color: #F8FAFC;
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+}
+.control-caption {
+    color: #93A4B8;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    margin-bottom: 0.9rem;
+}
+.control-section {
+    margin: 1.0rem 0 0.55rem;
+    color: #FACC15;
+    font-size: 0.70rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 900;
+}
+
 .kpi-card {
-    min-height: 138px;
-    padding: 1.05rem 1.10rem;
-    border: 1px solid rgba(148, 163, 184, 0.26);
-    border-radius: 1.05rem;
-    background: var(--secondary-background-color);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
+    min-height: 142px;
+    padding: 1.05rem 1.08rem;
+    border: 1px solid var(--terminal-border);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(7, 17, 31, 0.94));
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
     overflow: visible;
+    position: relative;
+}
+.kpi-card:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 18px 18px 0 0;
+    background: linear-gradient(90deg, var(--terminal-cyan), var(--terminal-amber));
+    opacity: 0.85;
 }
 .kpi-label {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.38rem;
     margin-bottom: 0.55rem;
-    color: var(--text-color);
-    font-size: 0.95rem;
-    font-weight: 650;
+    color: #9AA7B5;
+    font-size: 0.77rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     line-height: 1.25;
 }
 .kpi-help {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.05rem;
-    height: 1.05rem;
-    border: 1px solid rgba(148, 163, 184, 0.70);
+    width: 1.02rem;
+    height: 1.02rem;
+    border: 1px solid rgba(148, 163, 184, 0.72);
     border-radius: 999px;
-    color: rgba(148, 163, 184, 0.95);
-    font-size: 0.72rem;
-    font-weight: 800;
+    color: rgba(203, 213, 225, 0.92);
+    font-size: 0.70rem;
+    font-weight: 900;
     cursor: help;
 }
 .kpi-value {
-    color: var(--text-color);
-    font-size: clamp(1.45rem, 2.3vw, 2.55rem);
-    line-height: 1.05;
-    font-weight: 750;
-    letter-spacing: -0.035em;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: normal;
-}
-.kpi-value.strategy {
-    font-size: clamp(1.25rem, 1.7vw, 2.05rem);
-    letter-spacing: -0.025em;
-}
-
-.project-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1.25rem;
-    margin-bottom: 1.25rem;
-}
-.project-header-left {
-    flex: 1;
-    min-width: 0;
-}
-.header-subtitle {
-    color: var(--text-color);
-    opacity: 0.82;
-    font-size: 1.02rem;
-    line-height: 1.55;
-    margin: 0.65rem 0 0;
-    max-width: 920px;
-}
-.creator-signature-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    margin-top: 0.12rem;
-    flex-shrink: 0;
-}
-.creator-name {
-    color: rgba(148, 163, 184, 0.96);
-    font-size: 0.82rem;
-    font-weight: 750;
-    white-space: nowrap;
-}
-.signature-square {
-    position: relative;
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    background: #0A66C2;
-    color: #ffffff !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none !important;
+    color: #F8FAFC;
+    font-size: clamp(1.35rem, 2.1vw, 2.45rem);
+    line-height: 1.06;
     font-weight: 900;
     letter-spacing: -0.04em;
-    box-shadow: 0 12px 28px rgba(10, 102, 194, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.20);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
-.signature-square:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.08);
-    box-shadow: 0 16px 34px rgba(10, 102, 194, 0.36);
+.kpi-value.strategy { font-size: clamp(1.18rem, 1.55vw, 1.92rem); letter-spacing: -0.025em; }
+.kpi-footnote { margin-top: 0.52rem; color: #6F8092; font-size: 0.76rem; line-height: 1.35; }
+
+.panel {
+    border: 1px solid var(--terminal-border);
+    border-radius: 22px;
+    background: var(--terminal-panel);
+    padding: 1.1rem 1.15rem;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+    margin-bottom: 1rem;
 }
-.signature-square .nf-mark {
+.panel-title {
+    color: #F8FAFC;
     font-size: 1.12rem;
-    line-height: 1;
-}
-.signature-square .in-mark {
-    position: absolute;
-    right: 6px;
-    bottom: 5px;
-    font-size: 0.55rem;
-    line-height: 1;
     font-weight: 900;
-    background: rgba(255, 255, 255, 0.20);
-    padding: 2px 3px;
-    border-radius: 4px;
+    letter-spacing: -0.025em;
+    margin-bottom: 0.22rem;
 }
-@media (max-width: 760px) {
-    .project-header {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    .creator-signature-wrap {
-        margin-top: 0.1rem;
-    }
+.panel-subtitle {
+    color: #93A4B8;
+    font-size: 0.91rem;
+    line-height: 1.45;
+    margin-bottom: 0.82rem;
+}
+.terminal-brief {
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 22px;
+    background:
+        linear-gradient(135deg, rgba(8, 47, 73, 0.36), rgba(7, 17, 31, 0.82)),
+        radial-gradient(circle at top right, rgba(45, 212, 191, 0.11), transparent 42%);
+    padding: 1.1rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 20px 52px rgba(0, 0, 0, 0.25);
+}
+.terminal-brief h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.22rem;
+    color: #F8FAFC;
+    letter-spacing: -0.03em;
+}
+.terminal-brief p, .terminal-brief li { color: #C8D4E3; line-height: 1.62; }
+
+.badge-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+.terminal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.42rem 0.62rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.17);
+    color: #DCE7F3;
+    font-size: 0.78rem;
+    font-weight: 780;
+}
+.terminal-badge strong { color: #FACC15; }
+
+[data-testid="stTabs"] button { color: #C8D4E3; font-weight: 780; }
+[data-testid="stTabs"] button[aria-selected="true"] { color: #FACC15; }
+[data-testid="stDataFrame"] { border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 16px; overflow: hidden; }
+
+.footer-signature {
+    margin-top: 1.7rem;
+    color: #7C8CA1;
+    font-size: 0.84rem;
+    text-align: center;
 }
 
+@media (max-width: 980px) {
+    .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .terminal-title { font-size: 2.25rem; }
+}
+@media (max-width: 620px) {
+    .status-grid { grid-template-columns: 1fr; }
+    .terminal-shell { padding: 1rem; }
+    .header-actions { width: 100%; justify-content: flex-start; }
+}
 </style>
 """
-st.markdown(APP_CSS, unsafe_allow_html=True)
 
+st.markdown(TERMINAL_CSS, unsafe_allow_html=True)
 
-LINKEDIN_URL = "https://www.linkedin.com/in/nicola-fanelli-8ab498360/"
-
-
-def render_project_header() -> None:
-    """Render the app header with a compact LinkedIn signature badge."""
-    linkedin_url = html.escape(LINKEDIN_URL, quote=True)
-    st.markdown(
-        f"""
-        <div class="project-header">
-            <div class="project-header-left">
-                <div class="big-title">Virtual ETF Portfolio Optimization &amp; Risk Management Engine</div>
-                <p class="header-subtitle">
-                    An interactive quantitative finance dashboard for ETF allocation research,
-                    walk-forward backtesting, transaction-cost simulation, and institutional risk analytics.
-                </p>
-            </div>
-            <div class="creator-signature-wrap">
-                <span class="creator-name">Nicola Fanelli</span>
-                <a class="signature-square"
-                   href="{linkedin_url}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   aria-label="Open Nicola Fanelli's LinkedIn profile"
-                   title="Open Nicola Fanelli's LinkedIn profile">
-                    <span class="nf-mark">NF</span>
-                    <span class="in-mark">in</span>
-                </a>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 def parse_tickers(text: str) -> list[str]:
-    """Parse comma- or whitespace-separated ETF tickers."""
+    """Parse comma-, semicolon-, or newline-separated ETF tickers."""
     raw = text.replace("\n", ",").replace(";", ",").split(",")
     tickers = [item.strip().upper() for item in raw if item.strip()]
     unique: list[str] = []
@@ -1566,6 +1752,29 @@ def cached_analysis(settings_dict: dict[str, Any], data_mode: str, n_frontier_sa
     """Run and cache the expensive analysis step."""
     settings = OptimizerSettings(**settings_dict)
     return run_full_analysis(settings=settings, data_mode=data_mode, n_frontier_samples=n_frontier_samples)
+
+
+def settings_to_dict(settings: OptimizerSettings) -> dict[str, Any]:
+    """Convert settings dataclass to a cache-friendly dictionary."""
+    return {
+        "tickers": list(settings.tickers),
+        "benchmark": settings.benchmark,
+        "start_date": settings.start_date,
+        "end_date": settings.end_date,
+        "initial_capital": settings.initial_capital,
+        "min_weight": settings.min_weight,
+        "max_weight": settings.max_weight,
+        "risk_free_rate": settings.risk_free_rate,
+        "lookback_days": settings.lookback_days,
+        "rebalance_frequency": settings.rebalance_frequency,
+        "transaction_cost_bps": settings.transaction_cost_bps,
+        "min_history_ratio": settings.min_history_ratio,
+        "winsorize_returns": settings.winsorize_returns,
+        "winsorize_lower": settings.winsorize_lower,
+        "winsorize_upper": settings.winsorize_upper,
+        "covariance_method": settings.covariance_method,
+        "random_seed": settings.random_seed,
+    }
 
 
 def format_performance_table(performance: pd.DataFrame) -> pd.DataFrame:
@@ -1592,43 +1801,16 @@ def format_performance_table(performance: pd.DataFrame) -> pd.DataFrame:
     return table
 
 
-def format_weight_list(weights: pd.Series, limit: int = 4) -> str:
-    """Create a compact sentence-friendly list of top portfolio weights."""
-    clean = weights.dropna().sort_values(ascending=False)
-    clean = clean[clean > 1e-4].head(limit)
-    if clean.empty:
-        return "no material positions"
-    return ", ".join(f"{ticker} ({value:.1%})" for ticker, value in clean.items())
-
-
-def _metric_value(row: pd.Series, column: str) -> float:
-    """Safely extract a numeric metric from a performance row."""
-    value = row.get(column, np.nan)
-    return float(value) if pd.notna(value) else np.nan
-
-
-def render_kpi_card(label: str, value: str, help_text: str, *, value_class: str = "") -> None:
-    """Render a KPI card with a readable value and a hoverable question-mark hint."""
-    safe_label = html.escape(label)
-    safe_value = html.escape(str(value))
-    safe_help = html.escape(help_text, quote=True)
-    cls = f"kpi-value {value_class}".strip()
-    st.markdown(
-        f"""
-        <div class="kpi-card">
-            <div class="kpi-label">
-                <span>{safe_label}</span>
-                <span class="kpi-help" title="{safe_help}">?</span>
-            </div>
-            <div class="{cls}">{safe_value}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+def format_weights_table(weights: pd.DataFrame) -> pd.DataFrame:
+    """Format portfolio weights for display."""
+    table = weights.copy()
+    for col in table.columns:
+        table[col] = table[col].map(lambda x: "" if pd.isna(x) else f"{x:.2%}")
+    return table
 
 
 def strategy_universe(performance: pd.DataFrame) -> list[str]:
-    """Return only strategy rows, excluding benchmark rows when possible."""
+    """Return only model strategy rows, excluding benchmark rows when possible."""
     preferred = [
         "Equal Weight",
         "Minimum Volatility",
@@ -1640,20 +1822,120 @@ def strategy_universe(performance: pd.DataFrame) -> list[str]:
     return available if available else list(performance.index)
 
 
-def generate_result_explanation(results: dict[str, Any], best_strategy: str, best_ending_value: float) -> str:
-    """Generate a written interpretation of the current optimization result.
+def metric_value(row: pd.Series, column: str) -> float:
+    """Safely extract a numeric metric from a performance row."""
+    value = row.get(column, np.nan)
+    return float(value) if pd.notna(value) else np.nan
 
-    The goal is to make the dashboard portfolio-profile friendly: a viewer can
-    understand what the best result means without reading the source code.
-    The text is generated from the currently selected sidebar assumptions.
-    """
+
+def format_weight_list(weights: pd.Series, limit: int = 5) -> str:
+    """Create a compact sentence-friendly list of top portfolio weights."""
+    clean = weights.dropna().sort_values(ascending=False)
+    clean = clean[clean > 1e-4].head(limit)
+    if clean.empty:
+        return "no material positions"
+    return ", ".join(f"{ticker} ({value:.1%})" for ticker, value in clean.items())
+
+
+def risk_label(sharpe: float, max_drawdown: float) -> str:
+    """Convert core risk metrics into a plain-English research label."""
+    if pd.isna(sharpe) or pd.isna(max_drawdown):
+        return "Review"
+    if sharpe >= 1.0 and max_drawdown > -0.20:
+        return "High quality"
+    if sharpe >= 0.60 and max_drawdown > -0.35:
+        return "Balanced"
+    if max_drawdown <= -0.45:
+        return "High drawdown"
+    return "Moderate"
+
+
+def render_header(settings: OptimizerSettings | None = None, data_label: str | None = None) -> None:
+    """Render a terminal-style app header with signature and status badges."""
+    linkedin_url = html.escape(LINKEDIN_URL, quote=True)
+    now_text = datetime.now().strftime("%Y-%m-%d %H:%M")
+    tickers_count = f"{len(settings.tickers)} ETFs" if settings else "ETF Universe"
+    rebalance_text = "Monthly" if settings and settings.rebalance_frequency == "ME" else "Quarterly" if settings else "Rebalance"
+    lookback_text = f"{settings.lookback_days}d" if settings else "Lookback"
+    source_text = html.escape(str(data_label or "Ready"))
+
+    st.markdown(
+        f"""
+        <div class="terminal-shell">
+            <div class="terminal-topline">
+                <div>
+                    <div class="terminal-eyebrow">Institutional Quant Research Dashboard</div>
+                    <h1 class="terminal-title">ETF Allocation Terminal</h1>
+                    <p class="terminal-subtitle">
+                        Portfolio optimization, walk-forward backtesting, transaction-cost simulation,
+                        and risk analytics for a diversified ETF universe.
+                    </p>
+                    <div class="badge-row">
+                        <span class="terminal-badge">Objective <strong>Risk-adjusted allocation</strong></span>
+                        <span class="terminal-badge">Engine <strong>Python / SciPy / Plotly</strong></span>
+                        <span class="terminal-badge">Use case <strong>Asset allocation research</strong></span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <span class="creator-name">Nicola Fanelli</span>
+                    <a class="signature-square" href="{linkedin_url}" target="_blank" rel="noopener noreferrer" title="Open Nicola Fanelli's LinkedIn profile">
+                        <span class="nf-mark">NF</span><span class="in-mark">in</span>
+                    </a>
+                </div>
+            </div>
+            <div class="status-grid">
+                <div class="status-tile"><div class="status-label">Data Source</div><div class="status-value">{source_text}</div></div>
+                <div class="status-tile"><div class="status-label">Universe</div><div class="status-value">{tickers_count}</div></div>
+                <div class="status-tile"><div class="status-label">Lookback</div><div class="status-value">{lookback_text}</div></div>
+                <div class="status-tile"><div class="status-label">Rebalance</div><div class="status-value">{rebalance_text}</div></div>
+                <div class="status-tile"><div class="status-label">Last Run</div><div class="status-value">{now_text}</div></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_kpi_card(label: str, value: str, help_text: str, footnote: str = "", *, value_class: str = "") -> None:
+    """Render a readable KPI card with a hoverable question-mark hint."""
+    safe_label = html.escape(label)
+    safe_value = html.escape(str(value))
+    safe_help = html.escape(help_text, quote=True)
+    safe_note = html.escape(footnote)
+    cls = f"kpi-value {value_class}".strip()
+    note_html = f'<div class="kpi-footnote">{safe_note}</div>' if footnote else ""
+    st.markdown(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-label"><span>{safe_label}</span><span class="kpi-help" title="{safe_help}">?</span></div>
+            <div class="{cls}">{safe_value}</div>
+            {note_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_panel(title: str, subtitle: str = "") -> None:
+    """Open a styled panel title. Use before Streamlit-native content."""
+    st.markdown(
+        f"""
+        <div class="panel-title">{html.escape(title)}</div>
+        <div class="panel-subtitle">{html.escape(subtitle)}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def generate_investment_committee_brief(results: dict[str, Any], best_strategy: str, best_ending_value: float) -> str:
+    """Generate a concise written interpretation of the currently displayed result."""
     settings: OptimizerSettings = results["settings"]
     performance: pd.DataFrame = results["performance"]
     static_weights: pd.DataFrame = results["static_weights"]
     turnover: pd.DataFrame = results["turnover"]
 
     if best_strategy not in performance.index:
-        return "The optimizer completed, but there was not enough information to generate a detailed written interpretation."
+        return "The optimizer completed, but there was not enough information to generate a written interpretation."
 
     best = performance.loc[best_strategy]
     candidate_names = strategy_universe(performance)
@@ -1662,70 +1944,54 @@ def generate_result_explanation(results: dict[str, Any], best_strategy: str, bes
     highest_cagr_strategy = candidates["CAGR"].dropna().idxmax() if "CAGR" in candidates else best_strategy
     lowest_drawdown_strategy = candidates["Max Drawdown"].dropna().idxmax() if "Max Drawdown" in candidates else best_strategy
 
-    top_weights = "not available for this strategy"
+    top_weights = "not available"
     if best_strategy in static_weights.index:
         top_weights = format_weight_list(static_weights.loc[best_strategy])
     elif "Maximum Sharpe" in static_weights.index:
         top_weights = format_weight_list(static_weights.loc["Maximum Sharpe"])
 
     benchmark_name = f"Benchmark {settings.benchmark}"
-    benchmark_comment = ""
+    benchmark_sentence = ""
     if benchmark_name in performance.index:
         benchmark = performance.loc[benchmark_name]
-        cagr_delta = _metric_value(best, "CAGR") - _metric_value(benchmark, "CAGR")
-        drawdown_delta = _metric_value(best, "Max Drawdown") - _metric_value(benchmark, "Max Drawdown")
+        cagr_delta = metric_value(best, "CAGR") - metric_value(benchmark, "CAGR")
+        drawdown_delta = metric_value(best, "Max Drawdown") - metric_value(benchmark, "Max Drawdown")
         cagr_word = "higher" if cagr_delta >= 0 else "lower"
         dd_word = "less severe" if drawdown_delta >= 0 else "more severe"
-        benchmark_comment = (
-            f" Compared with {benchmark_name}, the selected strategy produced a CAGR that was "
-            f"{abs(cagr_delta):.2%} {cagr_word} and a maximum drawdown that was "
-            f"{abs(drawdown_delta):.2%} {dd_word}."
+        benchmark_sentence = (
+            f"Relative to {benchmark_name}, the strategy delivered a CAGR that was **{abs(cagr_delta):.2%} {cagr_word}** "
+            f"and a maximum drawdown that was **{abs(drawdown_delta):.2%} {dd_word}**."
         )
 
-    turnover_text = "not material or not available"
+    turnover_text = "not available"
     if turnover is not None and not turnover.empty and "Strategy" in turnover.columns:
         strat_turnover = turnover.loc[turnover["Strategy"] == best_strategy, "Turnover"]
         if not strat_turnover.empty:
             turnover_text = f"{float(strat_turnover.mean()):.1%} average turnover per rebalance"
 
     return f"""
-**What this result means:** Under the current assumptions, **{best_strategy}** has the strongest risk-adjusted profile among the optimized ETF strategies shown in the dashboard. The walk-forward backtest simulates investing **{money(settings.initial_capital)}** and re-optimizing on a **{settings.lookback_days}-trading-day lookback window** with **{settings.transaction_cost_bps:.1f} bps** of simulated transaction cost per turnover.
+### Investment Committee Brief
 
-The selected strategy ended at approximately **{money(best_ending_value)}**, with **{pct(_metric_value(best, 'CAGR'))} CAGR**, **{pct(_metric_value(best, 'Volatility'))} annualized volatility**, a **{num(_metric_value(best, 'Sharpe'), 2)} Sharpe ratio**, and a **{pct(_metric_value(best, 'Max Drawdown'))} maximum drawdown**. The strongest static allocation exposure is concentrated in **{top_weights}**.
+Under the current assumptions, **{best_strategy}** ranks as the strongest optimized strategy by Sharpe ratio. The simulation starts with **{money(settings.initial_capital)}**, uses a **{settings.lookback_days}-trading-day estimation window**, rebalances **{'monthly' if settings.rebalance_frequency == 'ME' else 'quarterly'}**, and deducts **{settings.transaction_cost_bps:.1f} bps** of simulated transaction cost per unit of turnover.
 
-The dashboard should be read as a trade-off, not as a return guarantee. **{highest_cagr_strategy}** produced the highest CAGR among the optimized strategies, while **{lowest_drawdown_strategy}** had the least severe maximum drawdown. This helps separate return generation from downside risk control.{benchmark_comment}
+The selected strategy finished at approximately **{money(best_ending_value)}**, with **{pct(metric_value(best, 'CAGR'))} CAGR**, **{pct(metric_value(best, 'Volatility'))} annualized volatility**, **{num(metric_value(best, 'Sharpe'), 2)} Sharpe**, and **{pct(metric_value(best, 'Max Drawdown'))} maximum drawdown**. The largest current allocation exposures are **{top_weights}**.
 
-Average simulated rebalancing intensity for **{best_strategy}** was **{turnover_text}**. Higher turnover can improve adaptation to new market conditions, but it also increases implementation costs and makes the strategy less practical if trading costs, taxes, or liquidity constraints are high.
+The result should be interpreted as an allocation trade-off rather than a prediction. **{highest_cagr_strategy}** generated the highest CAGR among the optimized strategies, while **{lowest_drawdown_strategy}** controlled drawdown best. {benchmark_sentence}
+
+Implementation note: **{best_strategy}** had **{turnover_text}**. Higher turnover can improve adaptation, but it can also reduce real-world investability once taxes, bid-ask spreads, liquidity, and market impact are considered.
 """
 
 
-def settings_to_dict(settings: OptimizerSettings) -> dict[str, Any]:
-    """Convert settings dataclass to a cache-friendly dictionary."""
-    return {
-        "tickers": list(settings.tickers),
-        "benchmark": settings.benchmark,
-        "start_date": settings.start_date,
-        "end_date": settings.end_date,
-        "initial_capital": settings.initial_capital,
-        "min_weight": settings.min_weight,
-        "max_weight": settings.max_weight,
-        "risk_free_rate": settings.risk_free_rate,
-        "lookback_days": settings.lookback_days,
-        "rebalance_frequency": settings.rebalance_frequency,
-        "transaction_cost_bps": settings.transaction_cost_bps,
-        "min_history_ratio": settings.min_history_ratio,
-        "winsorize_returns": settings.winsorize_returns,
-        "winsorize_lower": settings.winsorize_lower,
-        "winsorize_upper": settings.winsorize_upper,
-        "covariance_method": settings.covariance_method,
-        "random_seed": settings.random_seed,
-    }
+# --------------------------- Sidebar Controls ---------------------------
 
-
-st.sidebar.title("Editable Controls")
-st.sidebar.caption("Change the assumptions, rerun the engine, and view the updated portfolio dashboard.")
+st.sidebar.markdown('<div class="control-title">ETF Allocation Terminal</div>', unsafe_allow_html=True)
+st.sidebar.markdown(
+    '<div class="control-caption">Adjust assumptions, rerun the optimizer, and review the impact on allocation, risk, and performance.</div>',
+    unsafe_allow_html=True,
+)
 
 with st.sidebar:
+    st.markdown('<div class="control-section">Data</div>', unsafe_allow_html=True)
     data_mode_label = st.radio(
         "Data mode",
         options=["Demo data", "Live Yahoo Finance"],
@@ -1737,23 +2003,24 @@ with st.sidebar:
     tickers_text = st.text_area(
         "ETF universe",
         value="SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD, VNQ, DBC",
-        height=95,
-        help="Comma-separated ETF tickers included in the optimization universe. These are the investable assets the model can allocate to.",
+        height=96,
+        help="Comma-separated ETF tickers included in the optimization universe. These are the investable assets the optimizer can allocate to.",
     )
     tickers = parse_tickers(tickers_text)
 
+    st.markdown('<div class="control-section">Backtest Window</div>', unsafe_allow_html=True)
     col_a, col_b = st.columns(2)
     with col_a:
         start_date = st.date_input(
             "Start date",
             value=pd.Timestamp("2015-01-01").date(),
-            help="First date of the historical price sample used for returns, covariance estimation, and backtesting.",
+            help="First date of the historical sample used for returns, covariance estimation, and walk-forward backtesting.",
         )
     with col_b:
         end_date = st.date_input(
             "End date",
             value=pd.Timestamp.today().date(),
-            help="Last date of the historical price sample. Use today for the most recent available data.",
+            help="Last date of the historical sample. Use today for the most recent available data.",
         )
 
     initial_capital = st.number_input(
@@ -1764,13 +2031,15 @@ with st.sidebar:
         step=10_000,
         help="Hypothetical starting amount used to convert strategy returns into a virtual portfolio value curve.",
     )
+
+    st.markdown('<div class="control-section">Portfolio Constraints</div>', unsafe_allow_html=True)
     max_weight = st.slider(
         "Max ETF weight",
         min_value=0.10,
         max_value=1.00,
         value=0.35,
         step=0.05,
-        help="Upper allocation cap for any single ETF. Lower caps force more diversification; higher caps allow concentrated portfolios.",
+        help="Upper allocation cap for any single ETF. Lower caps force diversification; higher caps allow concentrated portfolios.",
     )
     min_weight = st.slider(
         "Min ETF weight",
@@ -1780,13 +2049,15 @@ with st.sidebar:
         step=0.01,
         help="Minimum allocation required for each ETF. A zero value allows the optimizer to exclude an ETF from the final allocation.",
     )
+
+    st.markdown('<div class="control-section">Optimization Assumptions</div>', unsafe_allow_html=True)
     risk_free_rate = st.slider(
         "Annual risk-free rate",
         min_value=0.00,
         max_value=0.10,
         value=0.03,
         step=0.005,
-        help="Annual return assumption for a risk-free asset. It is used when calculating Sharpe ratio, Sortino ratio, and alpha.",
+        help="Annual risk-free return assumption used for Sharpe ratio, Sortino ratio, and alpha calculations.",
     )
     lookback_days = st.slider(
         "Optimization lookback days",
@@ -1794,7 +2065,7 @@ with st.sidebar:
         max_value=1260,
         value=756,
         step=63,
-        help="Number of past trading days used at each rebalance to estimate expected returns and the covariance matrix. 252 is about one trading year.",
+        help="Number of historical trading days used at each rebalance to estimate returns and the covariance matrix. 252 is roughly one trading year.",
     )
     transaction_cost_bps = st.slider(
         "Transaction cost per turnover",
@@ -1819,11 +2090,11 @@ with st.sidebar:
         help="Number of random feasible portfolios plotted for the efficient frontier. Higher values create a smoother chart but run slower.",
     )
 
-    run_button = st.button("Run optimization", type="primary", use_container_width=True)
+    run_button = st.button("Run terminal analysis", type="primary", use_container_width=True)
 
-render_project_header()
 
 if len(tickers) < 2:
+    render_header()
     st.error("Please enter at least two ETF tickers.")
     st.stop()
 
@@ -1842,21 +2113,21 @@ settings = OptimizerSettings(
 )
 
 try:
-    with st.spinner("Running ETF optimization, walk-forward backtest, and risk analytics..."):
+    with st.spinner("Running allocation engine, walk-forward backtest, and risk analytics..."):
         results = cached_analysis(settings_to_dict(settings), data_mode, int(frontier_samples))
 except Exception as exc:
+    render_header(settings)
     st.error("The optimizer could not complete with the current settings.")
     st.exception(exc)
     st.stop()
 
-performance = results["performance"]
-static_weights = results["static_weights"]
-backtest_returns = results["backtest_returns"]
-turnover = results["turnover"]
+settings = results["settings"]
+performance: pd.DataFrame = results["performance"]
+static_weights: pd.DataFrame = results["static_weights"]
+backtest_returns: pd.DataFrame = results["backtest_returns"]
+turnover: pd.DataFrame = results["turnover"]
 figures = create_figures(results)
 
-# Highlight the best optimized strategy by Sharpe ratio, excluding simple benchmarks
-# from the headline KPI. Benchmarks remain in the performance table and charts.
 optimized_names = strategy_universe(performance)
 optimized_performance = performance.loc[optimized_names]
 sharpe_candidates = optimized_performance["Sharpe"].dropna() if "Sharpe" in optimized_performance.columns else pd.Series(dtype=float)
@@ -1864,72 +2135,161 @@ best_strategy = sharpe_candidates.idxmax() if not sharpe_candidates.empty else o
 best_row = performance.loc[best_strategy]
 ending_values = (1.0 + backtest_returns.fillna(0.0)).cumprod().iloc[-1] * settings.initial_capital
 best_ending_value = float(ending_values.get(best_strategy, ending_values.max()))
-result_explanation = generate_result_explanation(results, best_strategy, best_ending_value)
+committee_brief = generate_investment_committee_brief(results, best_strategy, best_ending_value)
+current_allocation_strategy = best_strategy if best_strategy in static_weights.index else ("Maximum Sharpe" if "Maximum Sharpe" in static_weights.index else static_weights.index[0])
+current_allocation = static_weights.loc[current_allocation_strategy].sort_values(ascending=False)
+current_allocation = current_allocation[current_allocation > 1e-4]
+risk_grade = risk_label(metric_value(best_row, "Sharpe"), metric_value(best_row, "Max Drawdown"))
 
-st.info(f"Data source used: {results['data_label']}. This project is virtual research and not investment advice.")
+render_header(settings, str(results.get("data_label", "Data source not specified")))
 
-kpi_cols = st.columns(4)
+kpi_cols = st.columns(6)
 with kpi_cols[0]:
     render_kpi_card(
         "Best Strategy",
         best_strategy,
-        "The optimized portfolio strategy with the highest Sharpe ratio among the model-generated strategies. Benchmarks are excluded from this ranking.",
+        "Optimized strategy with the highest Sharpe ratio among model-generated portfolios. Benchmarks are excluded from this headline ranking.",
+        footnote="Ranked by Sharpe",
         value_class="strategy",
     )
 with kpi_cols[1]:
     render_kpi_card(
-        "Best Ending Value",
+        "Ending Value",
         money(best_ending_value),
         "Final value of the virtual portfolio at the end of the walk-forward backtest after simulated rebalancing and transaction costs.",
+        footnote=f"Start: {money(settings.initial_capital)}",
     )
 with kpi_cols[2]:
     render_kpi_card(
-        "Best CAGR",
+        "CAGR",
         pct(best_row.get("CAGR")),
-        "CAGR means Compound Annual Growth Rate. It converts the full-period portfolio return into an annualized compounded return.",
+        "Compound Annual Growth Rate. It converts the full-period portfolio return into an annualized compounded return.",
+        footnote="Annualized return",
     )
 with kpi_cols[3]:
     render_kpi_card(
-        "Best Sharpe",
+        "Sharpe",
         f"{best_row.get('Sharpe'):.2f}" if pd.notna(best_row.get("Sharpe")) else "n/a",
-        "Risk-adjusted return metric. It compares annualized excess return against annualized volatility; higher is generally better.",
+        "Risk-adjusted return metric comparing annualized excess return against annualized volatility. Higher is generally better.",
+        footnote="Excess return / vol",
+    )
+with kpi_cols[4]:
+    render_kpi_card(
+        "Max Drawdown",
+        pct(best_row.get("Max Drawdown")),
+        "Largest peak-to-trough portfolio loss during the walk-forward backtest.",
+        footnote="Downside stress",
+    )
+with kpi_cols[5]:
+    render_kpi_card(
+        "Risk Grade",
+        risk_grade,
+        "Plain-English summary based on Sharpe ratio and maximum drawdown. It is a dashboard label, not an investment rating.",
+        footnote="Research label",
+        value_class="strategy",
     )
 
-main_tabs = st.tabs(["Dashboard", "Allocations", "Performance Table"])
+st.markdown("<br>", unsafe_allow_html=True)
+main_tabs = st.tabs(["Executive Dashboard", "Risk Monitor", "Allocation Book", "Performance Ledger"])
 
 with main_tabs[0]:
-    st.subheader("Interactive Dashboard")
-    st.markdown("### Result Explanation")
-    st.markdown(result_explanation)
-    st.divider()
-    st.plotly_chart(figures["wealth"], use_container_width=True, theme=None, config={"displaylogo": False})
-    st.plotly_chart(figures["drawdown"], use_container_width=True, theme=None, config={"displaylogo": False})
+    st.markdown('<div class="terminal-brief">', unsafe_allow_html=True)
+    st.markdown(committee_brief)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    left, right = st.columns([1.65, 1.0])
+    with left:
+        render_panel("Portfolio Value Path", "Growth of the virtual account across optimized strategies and benchmarks.")
+        st.plotly_chart(figures["wealth"], use_container_width=True, theme=None, config={"displaylogo": False})
+    with right:
+        render_panel("Current Recommended Allocation", f"Static output for {current_allocation_strategy} under the current constraints.")
+        allocation_display = pd.DataFrame({"ETF": current_allocation.index, "Weight": current_allocation.values})
+        st.dataframe(
+            allocation_display.style.format({"Weight": "{:.2%}"}),
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.download_button(
+            "Download current allocation",
+            data=allocation_display.to_csv(index=False).encode("utf-8"),
+            file_name="current_recommended_allocation.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
     col1, col2 = st.columns(2)
     with col1:
+        render_panel("Efficient Frontier", "Feasible risk-return combinations with optimized portfolios overlaid.")
         st.plotly_chart(figures["frontier"], use_container_width=True, theme=None, config={"displaylogo": False})
-        st.plotly_chart(figures["risk_contribution"], use_container_width=True, theme=None, config={"displaylogo": False})
     with col2:
+        render_panel("Correlation Structure", "Daily return correlation across the ETF universe.")
         st.plotly_chart(figures["correlation"], use_container_width=True, theme=None, config={"displaylogo": False})
-        st.plotly_chart(figures["rolling_volatility"], use_container_width=True, theme=None, config={"displaylogo": False})
-    st.plotly_chart(figures["prices"], use_container_width=True, theme=None, config={"displaylogo": False})
 
 with main_tabs[1]:
-    st.subheader("Portfolio Allocations")
-    st.plotly_chart(figures["weights"], use_container_width=True, theme=None, config={"displaylogo": False})
-    st.plotly_chart(figures["weight_history"], use_container_width=True, theme=None, config={"displaylogo": False})
-    st.dataframe(static_weights.style.format("{:.2%}"), use_container_width=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        render_panel("Drawdown Monitor", "Peak-to-trough losses by strategy. Lower magnitude drawdowns are generally preferred.")
+        st.plotly_chart(figures["drawdown"], use_container_width=True, theme=None, config={"displaylogo": False})
+    with col2:
+        render_panel("Rolling Volatility", "Realized 63-day annualized volatility after walk-forward portfolio construction.")
+        st.plotly_chart(figures["rolling_volatility"], use_container_width=True, theme=None, config={"displaylogo": False})
+
+    col3, col4 = st.columns(2)
+    with col3:
+        render_panel("Risk Contribution", "Approximate contribution of each ETF to portfolio variance for the selected allocation.")
+        st.plotly_chart(figures["risk_contribution"], use_container_width=True, theme=None, config={"displaylogo": False})
+    with col4:
+        render_panel("Underlying ETF Price Paths", "Normalized price history for the investable ETF universe.")
+        st.plotly_chart(figures["prices"], use_container_width=True, theme=None, config={"displaylogo": False})
 
 with main_tabs[2]:
-    st.subheader("Performance Metrics")
+    render_panel("Static Optimized Allocations", "Portfolio weights for each optimization method under current constraints.")
+    st.plotly_chart(figures["weights"], use_container_width=True, theme=None, config={"displaylogo": False})
+    st.dataframe(format_weights_table(static_weights), use_container_width=True)
+
+    render_panel("Walk-Forward Allocation History", "How the selected strategy changed its allocation through time.")
+    st.plotly_chart(figures["weight_history"], use_container_width=True, theme=None, config={"displaylogo": False})
+
+with main_tabs[3]:
+    render_panel("Institutional Performance Ledger", "Return, volatility, drawdown, tail-risk, benchmark, and turnover metrics.")
     st.dataframe(format_performance_table(performance), use_container_width=True)
+
     if not turnover.empty:
-        st.subheader("Turnover and Simulated Transaction Costs")
+        render_panel("Turnover and Simulated Transaction Costs", "Recent rebalancing intensity and estimated implementation drag.")
         st.dataframe(turnover.tail(30), use_container_width=True)
 
+    dl1, dl2, dl3 = st.columns(3)
+    with dl1:
+        st.download_button(
+            "Download performance table",
+            data=performance.to_csv().encode("utf-8"),
+            file_name="performance_summary.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with dl2:
+        st.download_button(
+            "Download optimized weights",
+            data=static_weights.to_csv().encode("utf-8"),
+            file_name="optimized_weights.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with dl3:
+        st.download_button(
+            "Download committee brief",
+            data=committee_brief.encode("utf-8"),
+            file_name="investment_committee_brief.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
 
-st.download_button(
-    "Download performance table as CSV",
-    data=performance.to_csv().encode("utf-8"),
-    file_name="performance_summary.csv",
-    mime="text/csv",
+st.markdown(
+    f"""
+    <div class="footer-signature">
+        Built by Nicola Fanelli · Virtual research project · Educational use only, not investment advice ·
+        <a href="{html.escape(LINKEDIN_URL, quote=True)}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
