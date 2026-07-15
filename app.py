@@ -1,20 +1,8 @@
-"""Single-file Streamlit app for the Virtual ETF Portfolio Optimizer.
+# Virtual ETF Portfolio Optimizer Streamlit app
+# Public demo app with editable sidebar controls and interactive charts.
 
-This version intentionally contains the full quant engine inside app.py so it
-works on Streamlit Cloud even if folder imports fail. Upload this app.py,
-requirements.txt, runtime.txt, and README.md to the root of your GitHub repo.
-"""
 from __future__ import annotations
 
-"""Demo market data generator for the Virtual ETF Portfolio Optimizer.
-
-The app is designed to use live Yahoo Finance data through yfinance, but a
-public web demo should never break just because a data vendor is temporarily
-unavailable. This module creates realistic synthetic ETF-like price series for
-portfolio research demonstrations.
-
-The generated data is NOT real market data and should be labeled as demo data.
-"""
 
 
 from dataclasses import dataclass
@@ -139,11 +127,6 @@ def generate_demo_prices(
     return price_frame
 
 # ======================== PORTFOLIO ENGINE ========================
-"""Portfolio analytics, optimization, and backtesting engine.
-
-This module is intentionally framework-agnostic. It can be imported by the
-Streamlit app, a Colab notebook, a scheduled report script, or tests.
-"""
 
 
 from dataclasses import dataclass, field
@@ -944,7 +927,6 @@ def run_full_analysis(
     }
 
 # ======================== REPORT BUILDER ========================
-"""HTML report and visualization builder for the ETF optimizer."""
 
 
 import html
@@ -1382,12 +1364,6 @@ def generate_demo_report(output_path: str | Path) -> Path:
     return build_html_report(results, output_path)
 
 # ======================== STREAMLIT APP ========================
-"""Streamlit web app for the Virtual ETF Portfolio Optimizer.
-
-Deploy this file to Streamlit Community Cloud to get a public URL for LinkedIn.
-The app is editable: change sidebar inputs, modify this Python file, or edit
-src/portfolio_engine.py to extend the quantitative logic.
-"""
 
 
 import tempfile
@@ -1426,6 +1402,49 @@ APP_CSS = """
 .small-muted { color: #64748b; font-size: 0.92rem; }
 .big-title { font-size: 3.0rem; line-height: 1.0; font-weight: 850; letter-spacing: -0.055em; margin-bottom: 0.4rem; }
 .section-note { color: #64748b; margin-top: -0.4rem; }
+.custom-kpi-card {
+    padding: 1.0rem 1.05rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 1.0rem;
+    background: rgba(15, 23, 42, 0.42);
+    min-height: 118px;
+    overflow: hidden;
+}
+.custom-kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: rgba(248, 250, 252, 0.86);
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.55rem;
+}
+.custom-kpi-value {
+    color: #ffffff;
+    font-size: clamp(1.45rem, 2.25vw, 2.35rem);
+    line-height: 1.08;
+    font-weight: 850;
+    letter-spacing: -0.035em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.custom-kpi-value.strategy {
+    font-size: clamp(1.05rem, 1.65vw, 1.75rem);
+    letter-spacing: -0.025em;
+}
+.help-dot {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border: 1px solid rgba(248, 250, 252, 0.48);
+    border-radius: 999px;
+    color: rgba(248, 250, 252, 0.88);
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: help;
+}
 </style>
 """
 st.markdown(APP_CSS, unsafe_allow_html=True)
@@ -1560,6 +1579,23 @@ Average simulated rebalancing intensity for **{best_strategy}** was **{turnover_
 """
 
 
+def metric_card(label: str, value: str, help_text: str, *, compact_value: bool = False) -> None:
+    """Render a readable KPI card with a visible question-mark explanation icon."""
+    value_class = "custom-kpi-value strategy" if compact_value else "custom-kpi-value"
+    st.markdown(
+        f"""
+        <div class="custom-kpi-card">
+            <div class="custom-kpi-label">
+                <span>{html.escape(label)}</span>
+                <span class="help-dot" title="{html.escape(help_text)}">?</span>
+            </div>
+            <div class="{value_class}">{html.escape(str(value))}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def settings_to_dict(settings: OptimizerSettings) -> dict[str, Any]:
     """Convert settings dataclass to a cache-friendly dictionary."""
     return {
@@ -1591,7 +1627,7 @@ with st.sidebar:
         "Data mode",
         options=["Demo data", "Live Yahoo Finance"],
         index=0,
-        help="Demo mode always works. Live mode requires internet access and the yfinance package.",
+        help="Choose demo data for a stable public web demo, or Live Yahoo Finance to download current historical ETF prices through yfinance.",
     )
     data_mode = "live" if data_mode_label == "Live Yahoo Finance" else "demo"
 
@@ -1599,24 +1635,86 @@ with st.sidebar:
         "ETF universe",
         value="SPY, QQQ, IWM, EFA, EEM, TLT, IEF, GLD, VNQ, DBC",
         height=95,
-        help="Use comma-separated ETF tickers.",
+        help="Comma-separated ETF tickers included in the optimization universe. The optimizer allocates only across these assets.",
     )
     tickers = parse_tickers(tickers_text)
 
     col_a, col_b = st.columns(2)
     with col_a:
-        start_date = st.date_input("Start date", value=pd.Timestamp("2015-01-01").date())
+        start_date = st.date_input(
+            "Start date",
+            value=pd.Timestamp("2015-01-01").date(),
+            help="First date used in the analysis. A longer history gives the optimizer more data, but may include older market regimes.",
+        )
     with col_b:
-        end_date = st.date_input("End date", value=pd.Timestamp.today().date())
+        end_date = st.date_input(
+            "End date",
+            value=pd.Timestamp.today().date(),
+            help="Last date used in the analysis. In live mode, this should be today or a recent trading date.",
+        )
 
-    initial_capital = st.number_input("Virtual starting capital", min_value=10_000, max_value=10_000_000, value=100_000, step=10_000)
-    max_weight = st.slider("Max ETF weight", min_value=0.10, max_value=1.00, value=0.35, step=0.05)
-    min_weight = st.slider("Min ETF weight", min_value=0.00, max_value=0.20, value=0.00, step=0.01)
-    risk_free_rate = st.slider("Annual risk-free rate", min_value=0.00, max_value=0.10, value=0.03, step=0.005)
-    lookback_days = st.slider("Optimization lookback days", min_value=252, max_value=1260, value=756, step=63)
-    transaction_cost_bps = st.slider("Transaction cost per turnover", min_value=0.0, max_value=50.0, value=5.0, step=1.0)
-    rebalance_frequency = st.selectbox("Rebalance frequency", options=["ME", "QE"], format_func=lambda x: "Monthly" if x == "ME" else "Quarterly")
-    frontier_samples = st.slider("Efficient frontier samples", min_value=1_000, max_value=10_000, value=4_000, step=1_000)
+    initial_capital = st.number_input(
+        "Virtual starting capital",
+        min_value=10_000,
+        max_value=10_000_000,
+        value=100_000,
+        step=10_000,
+        help="Starting dollar amount used to convert backtested returns into a virtual portfolio value. It does not affect percentage returns.",
+    )
+    max_weight = st.slider(
+        "Max ETF weight",
+        min_value=0.10,
+        max_value=1.00,
+        value=0.35,
+        step=0.05,
+        help="Largest allocation any single ETF is allowed to receive. Lower values force more diversification; higher values allow more concentration.",
+    )
+    min_weight = st.slider(
+        "Min ETF weight",
+        min_value=0.00,
+        max_value=0.20,
+        value=0.00,
+        step=0.01,
+        help="Smallest allocation each ETF must receive. Use 0% to let the optimizer exclude ETFs; higher values force every ETF to remain in the portfolio.",
+    )
+    risk_free_rate = st.slider(
+        "Annual risk-free rate",
+        min_value=0.00,
+        max_value=0.10,
+        value=0.03,
+        step=0.005,
+        help="Annual cash-like return assumption used to calculate excess return metrics such as Sharpe ratio.",
+    )
+    lookback_days = st.slider(
+        "Optimization lookback days",
+        min_value=252,
+        max_value=1260,
+        value=756,
+        step=63,
+        help="Number of past trading days used at each rebalance to estimate returns, volatility, and correlations. 252 trading days is roughly one year.",
+    )
+    transaction_cost_bps = st.slider(
+        "Transaction cost per turnover",
+        min_value=0.0,
+        max_value=50.0,
+        value=5.0,
+        step=1.0,
+        help="Simulated trading cost in basis points applied to portfolio turnover at each rebalance. 5 bps equals 0.05% of traded value.",
+    )
+    rebalance_frequency = st.selectbox(
+        "Rebalance frequency",
+        options=["ME", "QE"],
+        format_func=lambda x: "Monthly" if x == "ME" else "Quarterly",
+        help="How often the virtual portfolio is re-optimized and rebalanced. Monthly adapts faster; quarterly usually lowers turnover.",
+    )
+    frontier_samples = st.slider(
+        "Efficient frontier samples",
+        min_value=1_000,
+        max_value=10_000,
+        value=4_000,
+        step=1_000,
+        help="Number of random feasible portfolios used to visualize the risk-return opportunity set. More samples create a denser frontier but run slower.",
+    )
 
     run_button = st.button("Run optimization", type="primary", use_container_width=True)
 
@@ -1670,15 +1768,32 @@ result_explanation = generate_result_explanation(results, best_strategy, best_en
 
 st.info(f"Data source used: {results['data_label']}. This project is virtual research and not investment advice.")
 
-kpi_cols = st.columns(4)
+kpi_cols = st.columns([1.8, 1.2, 1.0, 1.0])
 with kpi_cols[0]:
-    st.metric("Best Strategy", best_strategy)
+    metric_card(
+        "Best Strategy",
+        str(best_strategy),
+        "Optimized strategy with the highest Sharpe ratio under the current assumptions. Benchmarks are excluded from this headline selection.",
+        compact_value=True,
+    )
 with kpi_cols[1]:
-    st.metric("Best Ending Value", money(best_ending_value))
+    metric_card(
+        "Best Ending Value",
+        money(best_ending_value),
+        "Ending virtual portfolio value for the best strategy after the walk-forward backtest period.",
+    )
 with kpi_cols[2]:
-    st.metric("Best CAGR", pct(best_row.get("CAGR")))
+    metric_card(
+        "Best CAGR",
+        pct(best_row.get("CAGR")),
+        "Compound Annual Growth Rate: the annualized return that would compound the starting value into the ending value over the backtest period.",
+    )
 with kpi_cols[3]:
-    st.metric("Best Sharpe", f"{best_row.get('Sharpe'):.2f}" if pd.notna(best_row.get("Sharpe")) else "n/a")
+    metric_card(
+        "Best Sharpe",
+        f"{best_row.get('Sharpe'):.2f}" if pd.notna(best_row.get("Sharpe")) else "n/a",
+        "Risk-adjusted return metric calculated as annualized excess return divided by annualized volatility. Higher is generally better.",
+    )
 
 main_tabs = st.tabs(["Dashboard", "Allocations", "Performance Table"])
 
