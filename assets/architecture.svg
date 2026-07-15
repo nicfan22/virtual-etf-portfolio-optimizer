@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-label="Virtual ETF Portfolio Optimizer architecture">
+  <rect width="1200" height="520" rx="28" fill="#f8fafc"/>
+  <text x="60" y="70" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Virtual ETF Portfolio Optimizer Architecture</text>
+  <text x="60" y="104" font-family="Arial, sans-serif" font-size="16" fill="#64748b">Editable Streamlit app plus GitHub Pages static dashboard</text>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.13"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/></marker>
+  </defs>
+  <g font-family="Arial, sans-serif">
+    <g filter="url(#shadow)">
+      <rect x="60" y="160" width="180" height="98" rx="18" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="82" y="198" font-size="20" font-weight="700" fill="#0f172a">Data Layer</text>
+      <text x="82" y="226" font-size="14" fill="#64748b">Yahoo Finance</text>
+      <text x="82" y="246" font-size="14" fill="#64748b">Demo data fallback</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="300" y="160" width="180" height="98" rx="18" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="322" y="198" font-size="20" font-weight="700" fill="#0f172a">Cleaning</text>
+      <text x="322" y="226" font-size="14" fill="#64748b">Missing values</text>
+      <text x="322" y="246" font-size="14" fill="#64748b">Return features</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="540" y="160" width="180" height="98" rx="18" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="562" y="198" font-size="20" font-weight="700" fill="#0f172a">Risk Model</text>
+      <text x="562" y="226" font-size="14" fill="#64748b">Expected returns</text>
+      <text x="562" y="246" font-size="14" fill="#64748b">Covariance matrix</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="780" y="160" width="180" height="98" rx="18" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="802" y="198" font-size="20" font-weight="700" fill="#0f172a">Optimizer</text>
+      <text x="802" y="226" font-size="14" fill="#64748b">Sharpe / Min Vol</text>
+      <text x="802" y="246" font-size="14" fill="#64748b">Risk Parity</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="1020" y="160" width="120" height="98" rx="18" fill="#ffffff" stroke="#dbeafe"/>
+      <text x="1042" y="198" font-size="20" font-weight="700" fill="#0f172a">Report</text>
+      <text x="1042" y="226" font-size="14" fill="#64748b">URL</text>
+      <text x="1042" y="246" font-size="14" fill="#64748b">LinkedIn</text>
+    </g>
+    <line x1="244" y1="209" x2="292" y2="209" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="484" y1="209" x2="532" y2="209" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="724" y1="209" x2="772" y2="209" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="964" y1="209" x2="1012" y2="209" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+    <g filter="url(#shadow)">
+      <rect x="225" y="330" width="750" height="112" rx="20" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="265" y="372" font-size="22" font-weight="700" fill="#1e3a8a">Walk-Forward Backtest</text>
+      <text x="265" y="406" font-size="15" fill="#334155">Optimize using only past data, invest the next period, rebalance monthly, and apply turnover-based transaction costs.</text>
+    </g>
+  </g>
+</svg>

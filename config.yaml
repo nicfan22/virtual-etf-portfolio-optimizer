@@ -1,0 +1,27 @@
+project:
+  name: Virtual ETF Portfolio Optimization & Risk Management Engine
+  description: Editable ETF allocation research app with walk-forward backtesting and institutional risk analytics.
+
+portfolio:
+  tickers:
+    - SPY
+    - QQQ
+    - IWM
+    - EFA
+    - EEM
+    - TLT
+    - IEF
+    - GLD
+    - VNQ
+    - DBC
+  benchmark: SPY
+  initial_capital: 100000
+  start_date: '2015-01-01'
+  end_date: null
+  min_weight: 0.00
+  max_weight: 0.35
+  risk_free_rate: 0.03
+  lookback_days: 756
+  rebalance_frequency: ME
+  transaction_cost_bps: 5.0
+  covariance_method: ledoit_wolf
